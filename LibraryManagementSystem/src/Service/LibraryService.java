@@ -78,12 +78,17 @@ public class LibraryService {
 			Book book = bookRepository.findBookById(bookId);
 			if (book != null) {
 				book.increaseAvailableCopies();
-				memberRepository.removeBorrowedBook(memberName, book);
-				System.out.println("Output: [ID: " + bookId + ", Return: '" + memberName + "']");
-				
+
+				if (memberRepository.bookAvailable(memberName, book)) {
+					memberRepository.removeBorrowedBook(memberName, book);
+					System.out.println("Output: [ID: " + bookId + ", Return: '" + memberName + "']");
+
+				} else {
+					System.out.println("Book with BookID " + bookId + "is not avilable " + memberName);
+				}
+
 				// Check if the returned book has a reservation
 				notifyReservedBookReturn(bookId, book);
-                
 
 			} else {
 				System.out.println("Book not found.");
@@ -95,15 +100,16 @@ public class LibraryService {
 
 	private void notifyReservedBookReturn(int bookId, Book book) {
 		if (bookReservations.containsKey(bookId)) {
-            Member reservingMember = bookReservations.get(bookId);
-            System.out.println("The reserved book " + book.getTitle() + " has been returned.");
-            System.out.println("Notifying the member " + reservingMember.getName() + " about the availability of the book.");
-            // Make the book available for the reserving member
-            bookReservations.remove(bookId);
-            book.decreaseAvailableCopies();
-            memberRepository.addBorrowedBook(reservingMember.getName(), book);
-        }
-		
+			Member reservingMember = bookReservations.get(bookId);
+			System.out.println("The reserved book " + book.getTitle() + " has been returned.");
+			System.out.println(
+					"Notifying the member " + reservingMember.getName() + " about the availability of the book.");
+			// Make the book available for the reserving member
+			bookReservations.remove(bookId);
+			book.decreaseAvailableCopies();
+			memberRepository.addBorrowedBook(reservingMember.getName(), book);
+		}
+
 	}
 
 	public void displayAllBooksWithStatus() {
@@ -153,30 +159,53 @@ public class LibraryService {
 			System.out.println("Member '" + memberName + "' not found.");
 		}
 	}
+	
+	// Display all books held by a member
+		public void displayBooksHeldByMemberHistory(String memberName) {
+			Member member = memberRepository.findMemberByName(memberName);
+			if (member != null) {
+				List<Book> borrowedBooksHistory = memberRepository.getBorrowedBooksHistory(memberName);
+				if (borrowedBooksHistory.isEmpty()) {
+					System.out.println("Member '" + memberName + "' does not hold any books.");
+				} else {
+					System.out.print(
+							"Output for member " + memberName + " : [Member ID: " + member.getMemberId() + ", Books: [");
+					for (int i = 0; i < borrowedBooksHistory.size(); i++) {
+						System.out.print("'" + borrowedBooksHistory.get(i).getTitle() + "'");
+						if (i < borrowedBooksHistory.size() - 1) {
+							System.out.print(", ");
+						}
+					}
+					System.out.println("]]");
+				}
+			} else {
+				System.out.println("Member '" + memberName + "' not found.");
+			}
+		}
 
 	/*-----------------BONUS-----------------*/
 	// Reserve a book
-    public void reserveBook(String memberName, int bookId) {
-        Member member = memberRepository.findMemberByName(memberName);
-        if (member != null) {
-            Book book = bookRepository.findBookById(bookId);
-            if (book != null) {
-                if (book.getAvailableCopies() > 0) {
-                    System.out.println("The book " + book.getTitle() + " is already available. No need to reserve.");
-                } else {
-                    if (bookReservations.containsKey(bookId)) {
-                        System.out.println("The book " + book.getTitle() + " is already reserved by another member.");
-                    } else {
-                        bookReservations.put(bookId, member);
-                        System.out.println(memberName + " reserved the book " + book.getTitle() + " successfully.");
-                    }
-                }
-            } else {
-                System.out.println("Book not found.");
-            }
-        } else {
-            System.out.println("Member not found.");
-        }
-    }
+	public void reserveBook(String memberName, int bookId) {
+		Member member = memberRepository.findMemberByName(memberName);
+		if (member != null) {
+			Book book = bookRepository.findBookById(bookId);
+			if (book != null) {
+				if (book.getAvailableCopies() > 0) {
+					System.out.println("The book " + book.getTitle() + " is already available. No need to reserve.");
+				} else {
+					if (bookReservations.containsKey(bookId)) {
+						System.out.println("The book " + book.getTitle() + " is already reserved by another member.");
+					} else {
+						bookReservations.put(bookId, member);
+						System.out.println(memberName + " reserved the book " + book.getTitle() + " successfully.");
+					}
+				}
+			} else {
+				System.out.println("Book not found.");
+			}
+		} else {
+			System.out.println("Member not found.");
+		}
+	}
 
 }
